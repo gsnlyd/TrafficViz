@@ -1,5 +1,6 @@
+import time
 from argparse import ArgumentParser
-from typing import Optional, NamedTuple, Tuple, List
+from typing import Optional, NamedTuple, Tuple, List, Union
 
 import torch
 import torchvision
@@ -63,25 +64,45 @@ class Detection(NamedTuple):
     score: float
 
 
-def visualize_detections(img: Image.Image, detections: List[Detection]):
-    draw = ImageDraw.Draw(img)
+def visualize_detections(img: Image.Image, detections: List[Detection], show: bool = False) -> Image.Image:
+    viz_img = img.copy()
+    draw = ImageDraw.Draw(viz_img)
+
+    box_line_width = 3
 
     for d in detections:
         color = LABEL_COLORS[d.label] if d.label in LABEL_COLORS else 'white'
+        text = 'Label: {} ({}), Score: {:.2f}'.format(d.label_str, d.label, d.score)
 
-        draw.rectangle(d.box, outline=color, width=2)
-        draw.text(d.box[0:2], text='Label: {} ({}), Score: {:.2f}'.format(d.label_str, d.label, d.score),
-                  fill=color, stroke_width=1, stroke_fill='black')
+        draw.rectangle(d.box, outline=color, width=box_line_width)
 
-    img.show()
+        text_width, text_height = draw.textsize(text)
+
+        text_coords = (d.box[0] + box_line_width + 1,
+                       d.box[1] + box_line_width + 1)
+        text_background_box = (
+            text_coords[0] - 1,
+            text_coords[1] - 1,
+            text_coords[0] + text_width,
+            text_coords[1] + text_height
+        )
+
+        draw.rectangle(text_background_box, fill='black')
+        draw.text(text_coords, text=text, fill=color)
+
+    if show:
+        viz_img.show()
+    return viz_img
 
 
 def detect_objects(image_path: str, threshold: float = DEFAULT_DETECTION_THRESHOLD, disable_label_filter: bool = False,
-                   print_detections: bool = False, visualize: bool = False) -> List[Detection]:
+                   print_detections: bool = False, visualize: bool = False, show_visualization: bool = False) -> \
+        Tuple[List[Detection], Optional[Image.Image]]:
+    start_time = time.time()
+
     img = Image.open(image_path)
     img_tensor: Tensor = img_transform(img)
     img_tensor = img_tensor.unsqueeze(0)  # Unsqueeze for a batch size of 1
-    print(img_tensor.shape)
 
     model = get_model()
     with torch.no_grad():
@@ -113,11 +134,13 @@ def detect_objects(image_path: str, threshold: float = DEFAULT_DETECTION_THRESHO
     if print_detections:
         for d in detections:
             print(d)
+        print('Detection took {:.2f} seconds'.format(time.time() - start_time))
 
     if visualize:
-        visualize_detections(img, detections)
+        viz_img = visualize_detections(img, detections, show=show_visualization)
+        return detections, viz_img
 
-    return detections
+    return detections, None
 
 
 if __name__ == '__main__':

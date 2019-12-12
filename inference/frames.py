@@ -39,6 +39,7 @@ def frames_from_video(video_path: str, framerate: int = DEFAULT_FRAMERATE) -> st
     assert num_frames_created > 0
 
     print('Created {} frames for video {} in directory {}'.format(num_frames_created, video_path, video_frames_path))
+    return video_frames_path
 
 
 if __name__ == '__main__':
