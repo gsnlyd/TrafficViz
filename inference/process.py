@@ -1,4 +1,5 @@
 import glob
+import json
 import math
 import os
 import time
@@ -12,6 +13,7 @@ from inference import frames, detect
 OUTPUTS_DIR = 'data/outputs'
 VIDEO_OUTPUTS_SUFFIX = '_outputs'
 VISUALIZED_DETECTIONS_SUBDIR = 'visualized_frames/detections'
+DETECTIONS_FILE_SUFFIX = '_detections.json'
 
 DEFAULT_NUM_THREADS = 3
 
@@ -35,7 +37,7 @@ def __detect_frames(frame_detections: List[List[detect.Detection]], start_index:
         frame_detections[path_i] = detections
 
 
-def detect_video(frames_path: str, video_outputs_dir: str,
+def detect_video(video_name: str, frames_path: str, video_outputs_dir: str,
                  num_threads: int = DEFAULT_NUM_THREADS,
                  save_visualized: bool = False, save_detections: bool = False,
                  start: int = 0, end: int = None) -> List[List[detect.Detection]]:
@@ -44,9 +46,8 @@ def detect_video(frames_path: str, video_outputs_dir: str,
 
     paths: List[str] = sorted(glob.glob(os.path.join(frames_path, '*.jpg')))
     if end is None:
-        paths = paths[start:]
-    else:
-        paths = paths[start:end]
+        end = len(paths)
+    paths = paths[start:end]
 
     visualized_detections_path = os.path.join(
         video_outputs_dir,
@@ -86,6 +87,22 @@ def detect_video(frames_path: str, video_outputs_dir: str,
 
     assert None not in frame_detections
     frame_detections: List[List[detect.Detection]]
+
+    if save_detections:
+        detections_file_name = video_name + DETECTIONS_FILE_SUFFIX
+        detections_file_path = os.path.join(video_outputs_dir, detections_file_name)
+
+        detections_json = {
+            'start': start,
+            'end': end,
+            'detections': [[d._asdict() for d in l] for l in frame_detections]
+        }
+
+        with open(detections_file_path, 'w') as detections_file:
+            json.dump(detections_json, detections_file, indent=2)
+
+        print('\nSaved detections at {}'.format(detections_file_path))
+
     return frame_detections
 
 
@@ -115,6 +132,7 @@ def process_video(video_path: str, num_threads: int = DEFAULT_NUM_THREADS,
     frames_path = frames.frames_from_video(video_path)
 
     detect_video(
+        video_name=video_name,
         frames_path=frames_path,
         video_outputs_dir=video_outputs_dir,
         num_threads=num_threads,
