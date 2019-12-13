@@ -9,21 +9,22 @@ from torch import multiprocessing
 
 from inference import frames, detect
 
-OUTPUT_FRAMES_DIR = 'data/output_frames'
-OUTPUT_FRAMES_SUFFIX = '_output_frames'
+OUTPUTS_DIR = 'data/outputs'
+VIDEO_OUTPUTS_SUFFIX = '_outputs'
+VISUALIZED_DETECTIONS_SUBDIR = 'visualized_frames/detections'
 
 DEFAULT_NUM_THREADS = 3
 
 
 def __detect_frames(frame_detections: List[List[detect.Detection]], start_index: int,
-                    paths: List[str], output_frames_path: str, save_visualized: bool = False):
+                    paths: List[str], visualized_detections_path: str, save_visualized: bool = False):
     for i, p in enumerate(paths):
         start_time = time.time()
 
         if save_visualized:
             detections, viz_img = detect.detect_objects(p, visualize=True)
 
-            save_path = os.path.join(output_frames_path, os.path.basename(p))
+            save_path = os.path.join(visualized_detections_path, os.path.basename(p))
             viz_img.save(save_path)
         else:
             detections, _ = detect.detect_objects(p, visualize=False)
@@ -34,21 +35,24 @@ def __detect_frames(frame_detections: List[List[detect.Detection]], start_index:
         frame_detections[path_i] = detections
 
 
-def detect_video(frames_path: str, save_visualized: bool = False, num_threads: int = DEFAULT_NUM_THREADS) -> \
-        Tuple[List[List[detect.Detection]], str]:
+def detect_video(frames_path: str, video_outputs_dir: str,
+                 num_threads: int = DEFAULT_NUM_THREADS,
+                 save_visualized: bool = False, save_detections: bool = False,
+                 start: int = 0, end: int = None) -> List[List[detect.Detection]]:
+    assert start >= 0
+    assert end is None or end >= 0
+
     paths: List[str] = sorted(glob.glob(os.path.join(frames_path, '*.jpg')))
+    if end is None:
+        paths = paths[start:]
+    else:
+        paths = paths[start:end]
 
-    output_frames_path = os.path.join(
-        OUTPUT_FRAMES_DIR,
-        os.path.basename(frames_path).strip(frames.VIDEO_FRAMES_SUFFIX) + OUTPUT_FRAMES_SUFFIX
+    visualized_detections_path = os.path.join(
+        video_outputs_dir,
+        VISUALIZED_DETECTIONS_SUBDIR
     )
-
-    if save_visualized:
-        if os.path.exists(output_frames_path):
-            print('Output frames already exist at {}'.format(output_frames_path))
-            save_visualized = False
-        else:
-            os.mkdir(output_frames_path)
+    os.makedirs(visualized_detections_path)
 
     print()
 
@@ -70,7 +74,7 @@ def detect_video(frames_path: str, save_visualized: bool = False, num_threads: i
             frame_detections,
             s_i,
             s,
-            output_frames_path,
+            visualized_detections_path,
             save_visualized
         ))
         p.start()
@@ -80,20 +84,70 @@ def detect_video(frames_path: str, save_visualized: bool = False, num_threads: i
     for p in processes:
         p.join()
 
+    assert None not in frame_detections
+    frame_detections: List[List[detect.Detection]]
     return frame_detections
 
 
-def process_video(video_path: str, save_visualized: bool = False, num_threads: int = DEFAULT_NUM_THREADS):
+def get_outputs_dir(video_name: str) -> str:
+    def outputs_dir_name(num: int) -> str:
+        return os.path.join(
+            OUTPUTS_DIR,
+            video_name + VIDEO_OUTPUTS_SUFFIX + '_' + str(num)
+        )
+
+    i = 1
+    cur_name = outputs_dir_name(i)
+    while os.path.exists(cur_name):
+        i += 1
+        cur_name = outputs_dir_name(i)
+
+    return cur_name
+
+
+def process_video(video_path: str, num_threads: int = DEFAULT_NUM_THREADS,
+                  save_visualized: bool = False, save_detections: bool = False,
+                  start: int = 0, end: int = None):
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    video_outputs_dir = get_outputs_dir(video_name)
+    os.makedirs(video_outputs_dir)
+
     frames_path = frames.frames_from_video(video_path)
 
-    output_frames_path = detect_video(frames_path, save_visualized, num_threads)
+    detect_video(
+        frames_path=frames_path,
+        video_outputs_dir=video_outputs_dir,
+        num_threads=num_threads,
+        save_visualized=save_visualized,
+        save_detections=save_detections,
+        start=start,
+        end=end
+    )
 
 
 if __name__ == '__main__':
+    assert os.path.exists('data')
+
     parser = ArgumentParser()
     parser.add_argument('--video', '-v', type=str, required=True, help='Path to the video.')
     parser.add_argument('--num-threads', '--threads', type=int, default=DEFAULT_NUM_THREADS)
 
-    args = parser.parse_args()
+    parser.add_argument('--save-visualizations', '-sv', action='store_true',
+                        help='Save frames with detections visualized.')
+    parser.add_argument('--save-detections', '-sd', action='store_true',
+                        help='Save raw detections in JSON format.')
 
-    process_video(args.video, save_visualized=True, num_threads=args.num_threads)
+    parser.add_argument('--start', '-s', type=int, default=0, help='Frame to start on.')
+    parser.add_argument('--end', '-e', type=int, default=None, help='Frame to end on.')
+
+    args = parser.parse_args()
+    print(args)
+
+    process_video(
+        video_path=args.video,
+        num_threads=args.num_threads,
+        save_visualized=args.save_visualizations,
+        save_detections=args.save_detections,
+        start=args.start - 1,
+        end=None if args.end is None else args.end - 1
+    )
