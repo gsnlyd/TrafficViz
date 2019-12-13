@@ -18,6 +18,41 @@ DETECTIONS_FILE_SUFFIX = '_detections.json'
 DEFAULT_NUM_THREADS = 3
 
 
+def save_detections_file(path: str, start: int, end: int, detections: List[List[detect.Detection]]):
+    detections_json = {
+        'start': start,
+        'end': end,
+        'detections': [[d._asdict() for d in l] for l in detections]
+    }
+
+    with open(path, 'w') as detections_file:
+        json.dump(detections_json, detections_file, indent=2)
+
+
+def load_detections_file(path: str) -> Tuple[int, int, List[List[detect.Detection]]]:
+    assert os.path.exists(path)
+
+    with open(path) as detections_file:
+        detections_json = json.load(detections_file)
+        start: int = detections_json['start']
+        end: int = detections_json['end']
+
+        detections: List[List[detect.Detection]] = []
+
+        for l in detections_json['detections']:
+            d_l = []
+            for d in l:
+                d_l.append(detect.Detection(
+                    box=tuple(d['box']),
+                    label=d['label'],
+                    label_str=d['label_str'],
+                    score=d['score']
+                ))
+            detections.append(d_l)
+
+    return start, end, detections
+
+
 def __detect_frames(frame_detections: List[List[detect.Detection]], start_index: int,
                     paths: List[str], visualized_detections_path: str, save_visualized: bool = False):
     for i, p in enumerate(paths):
@@ -92,15 +127,7 @@ def detect_video(video_name: str, frames_path: str, video_outputs_dir: str,
         detections_file_name = video_name + DETECTIONS_FILE_SUFFIX
         detections_file_path = os.path.join(video_outputs_dir, detections_file_name)
 
-        detections_json = {
-            'start': start,
-            'end': end,
-            'detections': [[d._asdict() for d in l] for l in frame_detections]
-        }
-
-        with open(detections_file_path, 'w') as detections_file:
-            json.dump(detections_json, detections_file, indent=2)
-
+        save_detections_file(detections_file_path, start, end, frame_detections)
         print('\nSaved detections at {}'.format(detections_file_path))
 
     return frame_detections
