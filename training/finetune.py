@@ -1,4 +1,5 @@
 import os
+import time
 from typing import List, Dict
 
 import torch
@@ -126,9 +127,9 @@ def train(epochs: int = 100, batch_size: int = 1):
                              transform=ToTensor())
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False,
-                              collate_fn=batch_collate)
+                              num_workers=4, pin_memory=True, collate_fn=batch_collate)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True,
-                            collate_fn=batch_collate)
+                            num_workers=4, pin_memory=True, collate_fn=batch_collate)
 
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
@@ -146,6 +147,7 @@ def train(epochs: int = 100, batch_size: int = 1):
             print()
 
             m = Metrics()
+            start_time = time.time()
             with torch.set_grad_enabled(mode == 'train'):
                 for batch_i, (img, target) in enumerate(loader):
                     img = [i.to(device) for i in img]
@@ -162,12 +164,15 @@ def train(epochs: int = 100, batch_size: int = 1):
                         total_loss.backward()
                         optimizer.step()
 
-                    if batch_i % (len(loader) / 10) == 0:
-                        print('epoch={} mode={} batch={}/{} --- '.format(
+                    if batch_i % (len(loader) / 20) == 0:
+                        elapsed = time.time() - start_time
+                        print('epoch={} mode={} batch={}/{} - {:.2f}s ({:.2f} batches/s) --- '.format(
                             epoch_i + 1,
                             mode,
                             batch_i + 1,
-                            len(loader)
+                            len(loader),
+                            elapsed,
+                            (batch_i + 1) / elapsed,
                         ) + ', '.join(['{}={}'.format(k, v) for k, v in m.avg_dict().items()]))
 
         scheduler.step(epoch_i)
