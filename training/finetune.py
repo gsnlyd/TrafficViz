@@ -164,7 +164,7 @@ def train(epochs: int = 100, batch_size: int = 1):
                         total_loss.backward()
                         optimizer.step()
 
-                    if batch_i % (len(loader) / 20) == 0:
+                    if batch_i % (len(loader) // 20) == 0:
                         elapsed = time.time() - start_time
                         print('epoch={} mode={} batch={}/{} - {:.2f}s ({:.2f} batches/s) --- '.format(
                             epoch_i + 1,
