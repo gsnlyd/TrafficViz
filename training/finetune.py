@@ -70,7 +70,9 @@ class CocoSubset(VisionDataset):
                 b[0] + b[2],
                 b[1] + b[3]  # Convert from (x y w h) to (x1 y1 x2 y2)
             ))
-            cat = self.ann_categories.index(d['category_id'])  # Re-compute category id from subset categories
+            # Re-compute category id from subset categories
+            # Add 1 because background is 0
+            cat = self.ann_categories.index(d['category_id']) + 1
             target['labels'].append(cat)
 
         target['boxes'] = torch.tensor(target['boxes'], dtype=torch.float)

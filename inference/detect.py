@@ -7,7 +7,10 @@ import torchvision
 from PIL import Image, ImageDraw
 from torch import Tensor
 from torch.nn import Module
+from torchvision.models.detection import FasterRCNN
 from torchvision.transforms import ToTensor
+
+from training import models
 
 DEFAULT_DETECTION_THRESHOLD = 0.7
 ALLOWED_LABELS = [
@@ -28,18 +31,23 @@ LABEL_COLORS = {
     8: 'purple'
 }
 
-_model: Optional[Module] = None
+_model: Optional[FasterRCNN] = None
 _labels: Optional[List[str]] = None
 
 img_transform = ToTensor()
 
 
-def get_model() -> Module:
+def get_model(load_finetuned: str = None) -> Module:
     global _model
     if _model is not None:
         return _model
 
-    _model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    if load_finetuned is None:
+        _model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    else:
+        _model = models.get_model(len(ALLOWED_LABELS))
+        _model.load_state_dict(torch.load(load_finetuned, map_location=torch.device('cpu')))
+
     _model.eval()
 
     return _model
@@ -146,18 +154,24 @@ def detect_objects(image_path: str, threshold: float = DEFAULT_DETECTION_THRESHO
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--image-path', '-i', type=str, required=True, help='Image on which to perform detection.')
-    parser.add_argument('--threshold', '-t', type=int, default=DEFAULT_DETECTION_THRESHOLD,
+    parser.add_argument('--threshold', '-t', type=float, default=DEFAULT_DETECTION_THRESHOLD,
                         help='Score threshold for detections.')
     parser.add_argument('--disable-label-filter', '-df', action='store_true',
                         help='Disable the filtering of unrelated categories.')
+    parser.add_argument('--finetuned-path', '-f', type=str, default=None,
+                        help='Path to load fine-tuned model weights.')
 
     args = parser.parse_args()
     print(args)
+
+    if args.finetuned_path is not None:
+        get_model(args.finetuned_path)
 
     detect_objects(
         image_path=args.image_path,
         threshold=args.threshold,
         disable_label_filter=args.disable_label_filter,
         print_detections=True,
-        visualize=True
+        visualize=True,
+        show_visualization=True
     )
