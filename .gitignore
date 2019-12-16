@@ -1,5 +1,7 @@
 # Project
 data/
+datasets/
+model_parameters/
 
 # Python
 venv/
