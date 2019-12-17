@@ -1,5 +1,6 @@
 import os
 import time
+from argparse import ArgumentParser
 from typing import List, Dict
 
 import torch
@@ -35,6 +36,7 @@ class CocoSubset(VisionDataset):
         super(CocoSubset, self).__init__(images_dir, None, transform, None)
         self.coco = COCO(annotations_path)
         self.img_ids = self.coco.getImgIds(catIds=img_categories)
+        print('Number of images:', len(self.img_ids))
 
         self.ann_categories = ann_categories
 
@@ -117,15 +119,15 @@ def save_parameters(save_dir: str, model: FasterRCNN, epoch: int):
     print('Saved model at path {}'.format(save_path))
 
 
-def train(epochs: int = 100, batch_size: int = 1):
+def train(epochs: int = 100, batch_size: int = 1, category_filter: List[int] = REQUIRE_CATEGORIES):
     model: FasterRCNN = models.get_model(len(USE_LABELS))
     train_dataset = CocoSubset(images_dir='datasets/train2017',
                                annotations_path='datasets/annotations/instances_train2017.json',
-                               img_categories=[3, 8], ann_categories=USE_LABELS,
+                               img_categories=category_filter, ann_categories=USE_LABELS,
                                transform=ToTensor())
     val_dataset = CocoSubset(images_dir='datasets/val2017',
                              annotations_path='datasets/annotations/instances_val2017.json',
-                             img_categories=[3, 8], ann_categories=USE_LABELS,
+                             img_categories=category_filter, ann_categories=USE_LABELS,
                              transform=ToTensor())
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False,
@@ -183,4 +185,11 @@ def train(epochs: int = 100, batch_size: int = 1):
 
 
 if __name__ == '__main__':
-    train()
+    parser = ArgumentParser()
+    parser.add_argument('--category-filter', '-c', type=str, default='3,8')
+    args = parser.parse_args()
+    print(args)
+
+    cat_filter = [int(v) for v in args.category_filter.split(',')]
+    print('Using categories:', cat_filter)
+    train(category_filter=cat_filter)
