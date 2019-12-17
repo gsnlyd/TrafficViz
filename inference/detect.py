@@ -22,6 +22,15 @@ ALLOWED_LABELS = [
     8,  # Truck
 ]
 
+FINETUNED_LABELS = [
+    'person',
+    'bicycle',
+    'car',
+    'motorcycle',
+    'bus',
+    'truck'
+]
+
 LABEL_COLORS = {
     1: 'pink',
     2: 'green',
@@ -31,6 +40,7 @@ LABEL_COLORS = {
     8: 'purple'
 }
 
+finetuned_model: bool = False
 _model: Optional[FasterRCNN] = None
 _labels: Optional[List[str]] = None
 
@@ -47,6 +57,8 @@ def get_model(load_finetuned: str = None) -> Module:
     else:
         _model = models.get_model(len(ALLOWED_LABELS))
         _model.load_state_dict(torch.load(load_finetuned, map_location=torch.device('cpu')))
+        global finetuned_model
+        finetuned_model = True
 
     _model.eval()
 
@@ -54,6 +66,9 @@ def get_model(load_finetuned: str = None) -> Module:
 
 
 def get_label_str(label: int) -> str:
+    if finetuned_model:
+        return FINETUNED_LABELS[label - 1]
+
     global _labels
     if _labels is None:
         _labels = []
@@ -63,6 +78,16 @@ def get_label_str(label: int) -> str:
                 _labels.append(label_str)
 
     return _labels[label - 1]
+
+
+def get_color(label: int) -> str:
+    if finetuned_model:
+        return list(LABEL_COLORS.values())[label - 1]
+
+    if label in LABEL_COLORS:
+        return LABEL_COLORS[label]
+    else:
+        return 'white'
 
 
 class Detection(NamedTuple):
@@ -79,9 +104,9 @@ def visualize_detections(img: Image.Image, detections: List[Detection], show: bo
     box_line_width = 3
 
     for d in detections:
-        color = LABEL_COLORS[d.label] if d.label in LABEL_COLORS else 'white'
         text = 'Label: {} ({}), Score: {:.2f}'.format(d.label_str, d.label, d.score)
 
+        color = get_color(d.label)
         draw.rectangle(d.box, outline=color, width=box_line_width)
 
         text_width, text_height = draw.textsize(text)

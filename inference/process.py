@@ -182,11 +182,17 @@ if __name__ == '__main__':
     parser.add_argument('--save-detections', '-sd', action='store_true',
                         help='Save raw detections in JSON format.')
 
+    parser.add_argument('--finetuned-path', '-f', type=str, default=None,
+                        help='Path to load fine-tuned model weights.')
+
     parser.add_argument('--start', '-s', type=int, default=0, help='Frame to start on.')
     parser.add_argument('--end', '-e', type=int, default=None, help='Frame to end on.')
 
     args = parser.parse_args()
     print(args)
+
+    if args.finetuned_path is not None:
+        detect.get_model(args.finetuned_path)
 
     process_video(
         video_path=args.video,
