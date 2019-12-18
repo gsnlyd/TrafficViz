@@ -215,8 +215,8 @@ def process_video(video_path: str,
                                                       starting_frame=start,
                                                       score_thresh_low=0,
                                                       score_thresh_high=0,
-                                                      iou_thresh=0.2,
-                                                      required_frames_per_track=10)
+                                                      iou_thresh=0.1,
+                                                      required_frames_per_track=2)
     position_tracks = ioutracker.get_position_tracklets(box_tracks)
 
     print('Found {} tracks from {} frames with {} detections'.format(
