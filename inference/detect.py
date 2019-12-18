@@ -1,12 +1,11 @@
-import time
 from argparse import ArgumentParser
-from typing import Optional, NamedTuple, Tuple, List, Union
+from argparse import ArgumentParser
+from typing import NamedTuple, Tuple, List
 
 import torch
 import torchvision
 from PIL import Image, ImageDraw
 from torch import Tensor
-from torch.nn import Module
 from torchvision.models.detection import FasterRCNN
 from torchvision.transforms import ToTensor
 
@@ -67,7 +66,7 @@ class Detector:
 
     def __label_properties(self, label: int) -> Tuple[int, str]:
         """Returns label and label str"""
-        if not self.filter_traffic_detections:
+        if not self.finetuned and not self.filter_traffic_detections:
             # Return properties for all COCO labels
             return label, self.all_coco_labels[label - 1]
 
