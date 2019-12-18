@@ -138,14 +138,16 @@ def get_new_outputs_dir(video_name: str) -> str:
     return cur_name
 
 
-def process_video(video_path: str, finetuned_path: str = None,
+def process_video(video_path: str,
+                  framerate: int = frames.DEFAULT_FRAMERATE,
+                  finetuned_path: str = None,
                   num_threads: int = DEFAULT_NUM_THREADS,
                   start: int = 0, end: int = None):
     video_name = os.path.splitext(os.path.basename(video_path))[0]
     video_outputs_dir = get_new_outputs_dir(video_name)
     os.makedirs(video_outputs_dir)
 
-    frames_path = frames.frames_from_video(video_path)
+    frames_path = frames.frames_from_video(video_path, framerate)
 
     detector = Detector(finetuned_path=finetuned_path)
     detections = detect_video(
@@ -164,6 +166,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('--video', '-v', type=str, required=True, help='Path to the video.')
+    parser.add_argument('--framerate', '-r', type=int, default=frames.DEFAULT_FRAMERATE, help='Video framerate.')
     parser.add_argument('--num-threads', '--threads', type=int, default=DEFAULT_NUM_THREADS)
 
     parser.add_argument('--finetuned-path', '-f', type=str, default=None,
@@ -177,6 +180,7 @@ if __name__ == '__main__':
 
     process_video(
         video_path=args.video,
+        framerate=args.framerate,
         finetuned_path=args.finetuned_path,
         num_threads=args.num_threads,
         start=args.start - 1,
