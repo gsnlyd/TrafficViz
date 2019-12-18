@@ -36,13 +36,28 @@ def frames_from_video(video_path: str, framerate: int = DEFAULT_FRAMERATE) -> st
     )
 
     print('Running command: {}'.format(ffmpeg_command))
-    subprocess.run(ffmpeg_command, shell=True)  # TODO: Don't use shell mode
+    subprocess.run(ffmpeg_command, shell=True)
 
     num_frames_created = len(os.listdir(video_frames_path))
     assert num_frames_created > 0
 
     print('Created {} frames for video {} in directory {}'.format(num_frames_created, video_path, video_frames_path))
     return video_frames_path
+
+
+def video_from_frames(frames_name: str, start: int, framerate: int, save_path: str):
+    ffmpeg_command = 'ffmpeg -framerate {} -start_number {} -i {} {}'.format(
+        framerate,
+        start,
+        frames_name,
+        save_path
+    )
+
+    print('Running command: {}'.format(ffmpeg_command))
+    subprocess.run(ffmpeg_command, shell=True)
+
+    assert os.path.exists(save_path)
+    print('Created video from frames {} at path {}'.format(frames_name, save_path))
 
 
 if __name__ == '__main__':

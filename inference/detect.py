@@ -35,7 +35,7 @@ DEFAULT_COLOR = 'white'
 
 
 class Detection(NamedTuple):
-    box: Tuple[int, int, int, int]
+    box: Tuple[float, float, float, float]
     label: int
     label_str: str
     score: float

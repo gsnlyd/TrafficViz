@@ -1,13 +1,13 @@
 import json
 from argparse import ArgumentParser
-from typing import List, Tuple
+from typing import List, Tuple, NamedTuple
 from inference import detect
 
 
 class Tracklet:
     def __init__(self, frame: int,
                  score: float,
-                 boxes: List[Tuple[int, int, int, int]]):
+                 boxes: List[Tuple[float, float, float, float]]):
         self.boxes = boxes
         self.score = score
         self.frame = frame
@@ -93,7 +93,28 @@ def tracklets_from_detections(detected_by_frame: List[List[detect.Detection]],
         if processing.score >= score_thresh_high and len(processing.boxes) >= required_frames_per_track:
             tracks_found.append(processing)
 
-    return tracks_found
+    return sorted(tracks_found, key=lambda t: t.frame)
+
+
+class PositionTracklet(NamedTuple):
+    frame: int
+    score: float
+    positions: List[Tuple[int, int]]
+
+
+def box_to_position(box: Tuple[int, int, int, int]) -> Tuple[int, int]:
+    return (
+        (box[0] + box[2]) // 2,
+        (box[1] + box[3]) // 2,
+    )
+
+
+def get_position_tracklets(box_tracks: List[Tracklet]) -> List[PositionTracklet]:
+    return [PositionTracklet(
+        frame=track.frame,
+        score=track.score,
+        positions=[box_to_position(box) for box in track.boxes]
+    ) for track in box_tracks]
 
 
 if __name__ == '__main__':
