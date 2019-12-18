@@ -264,7 +264,7 @@ if __name__ == '__main__':
     parser.add_argument('--detections', '-d', type=int, default=None,
                         help='Previous output number from which to load detections.')
 
-    parser.add_argument('--start', '-s', type=int, default=0, help='Frame to start on.')
+    parser.add_argument('--start', '-s', type=int, default=1, help='Frame to start on.')
     parser.add_argument('--end', '-e', type=int, default=None, help='Frame to end on.')
 
     args = parser.parse_args()
